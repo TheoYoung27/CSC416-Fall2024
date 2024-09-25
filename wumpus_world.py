@@ -56,6 +56,66 @@ class Player:
     def __init__(self, kb):
         self.kb = kb
 
+    def inference_by_resolution(self, query):
+        """if converted query is in kb, return true, else return false?"""
+
+    def resolve(self, cnf_1, cnf_2):
+        """doesn't need to do much besides resolve not x and x in cnf_1 and cnf_2?
+            needed for handling inference_by_resolution"""
+
+    def convert_to_cnf(self, prop):
+        """Simple statement case, return statement"""
+        if(not isinstance(prop, str)):
+            operator = prop[0]
+
+            if(operator == 'IMPLIES'):
+                """convert to form [or, (not prop[1]), prop[2]]"""
+                return self.convert_to_cnf(['OR', ('NOT', prop[1]), prop[2]])
+            
+            elif(operator == 'AND'):
+                """simple case, and contains atomic elements, return each element"""
+                if(isinstance(prop[1], str) and isinstance(prop[2], str)):
+                    return prop[1], prop[2]
+                else:
+                    return [self.convert_to_cnf(prop[1]), self.convert_to_cnf(prop[2])]
+                
+            elif(operator == 'IFF'):
+                return self.convert_to_cnf(['AND', ('OR', ('NOT', prop[1]), prop[2]), ('OR', prop[1], ('NOT', prop[2]))])
+
+            elif(operator == 'OR'):
+                """case where or contains atomics - nothing to be done"""
+                if(len(prop[1]) <= 1) and (len(prop[2]) <= 1):
+                    return prop
+                    """distributive case - ['OR', ('AND', 'X', 'Y'), 'Z'] converts to ['AND', ('OR', 'X', 'Z'), ('OR', 'Y','Z')]"""
+                elif(prop[1][0] == 'AND'):
+                    return self.convert_to_cnf(['AND', ('OR', prop[1][1], prop[2]), ('OR', prop[1][2], prop[2])])
+                else:
+                    """complex case, call convert on both operands"""
+                    return ['OR', self.convert_to_cnf(prop[1]), self.convert_to_cnf(prop[2])]
+                """catch nots, and props with nothing but variables -- need demorgan's case for nots"""
+            elif(operator == 'NOT' and not isinstance(prop[1], str)):
+                """double negation - remove and call convert on prop[1][1]"""
+                if prop[1][0] == 'NOT':
+                    return self.convert_to_cnf(prop[1][1])
+        
+                    """and - convert to ['OR', ('NOT', prop[1][1]), ('NOT', prop[1][2])]"""
+                elif prop[1][0] == 'AND':
+                    return self.convert_to_cnf(['OR', ('NOT', prop[1][1]), ('NOT', prop[1][2])])
+        
+                    """implies - convert to ['AND', prop[1][1], ('NOT', prop[1][2])"""
+                elif prop[1][0] == 'IMPLIES':
+                    return self.convert_to_cnf(['AND', prop[1][1], ('NOT', prop[1][2])])
+        
+                    """or - convert to ['AND', ('NOT', prop[1][1]), ('NOT', prop[1][2])]"""
+                elif prop[1][0] == 'OR':
+                    self.convert_to_cnf(['AND', ('NOT', prop[1][1]), ('NOT', prop[1][2])])
+
+                    """iff - convert to ['AND', ('OR', ('NOT', prop[1][1]), ('NOT', prop[1][2])), ('OR', prop[1][1], prop[1][2])]"""
+                elif prop[1][0] == 'IFF':
+                    self.convert_to_cnf(['AND', ('OR', ('NOT', prop[1][1]), ('NOT', prop[1][2])), ('OR', prop[1][1], prop[1][2])])
+        else:
+            return prop
+                
     def make_inferences(self, query):
         """
         Given the Player's knowledge base, determine whether the given query is true.
@@ -94,6 +154,7 @@ class Player:
         Transform the knowledge to seperate its sentences into facts,
         implications, and bidirectionals
         """
+        """ transform kb into cnf!"""
         facts = set()
         implications = []
         bidirectionals = []
@@ -121,17 +182,15 @@ class Player:
 if __name__ == '__main__':
     # the initial knowledge base for the player
     initial_kb = [
-        'A',
-        ('IMPLIES', 'A', 'B'),
-        ('NOT', 'P11'),
-        ('NOT', 'W11'),
-        ('NOT', 'B11'),
-        ('NOT', 'S11'),
-        ('IFF', 'B11', ('OR', 'P12', 'P21'))
+        ['AND', ('AND', 'X', 'Y'), ('AND', 'A', 'B')], 'Z'
     ]
     # our question - is there a pit in [2,1] (so that we can move there)
     query = 'P21' # we expect the answer to be False or ('NOT', 'P21') to be true
     # kb = {"1.1": [not p, not w, not b, not s]}
     player = Player(kb=initial_kb)
     print('This is the latest version')
-    print(player.make_inferences(query)) # -> either True or False
+    prev_kb = None
+    print(player.convert_to_cnf(['IMPLIES', ('NOT', 'A'), 'B']))
+    print(player.convert_to_cnf(['NOT', 'A']))
+    print(player.convert_to_cnf(['OR', ('AND', 'X', 'Y'), 'B']))
+"""    print(player.make_inferences(query)) # -> either True or False"""
