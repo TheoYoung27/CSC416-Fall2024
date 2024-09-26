@@ -22,7 +22,6 @@ class Player:
 
     # doesn't work
     def resolve(self, cnf_1, cnf_2):
-        # only handle cases where cnf_1 is atomic or negation of atomic
         resolved = set()
         for clause1 in cnf_1:
             for clause2 in cnf_2:
